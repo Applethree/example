@@ -1,0 +1,55 @@
+// 使用单件模式实现的SalarySys类
+class SalarySys
+{
+// 省略SalarySys类的其他属性和行为 
+//...
+// 将构造函数私有化(private)
+private:
+    SalarySys()
+    :m_nCount(0), 
+    m_strFileName("SalaryData.txt")
+    {
+         // …
+     }
+public:
+// 提供一个公有的（public，为了让客户能够访问）静态的(static，为了让
+// 客户可以在不创建对象的情况下直接访问)创建函数，
+// 供外界获取SalarySys的唯一对象
+// 在这个函数中，对对象的创建行为进行控制，以保证对象的唯一性
+    static SalarySys* getInstance()
+    {
+        // 如果唯一的实例对象还没有创建，则创建实例对象
+        if ( nullptr == m_pInstance )
+            m_pInstance = new SalarySys();
+        // 如果已经创建实例对象，则直接返回这个实例对象
+        return m_pInstance;
+    };
+private:
+// 静态的对象指针，指向唯一的实例对象
+// 为静态的唯一实例对象指针赋初始值，表示对象尚未创建
+    static SalarySys* m_pInstance = nullptr;
+};
+
+// …
+ 
+int main()
+{
+// 第一次调用getInstance()函数，唯一的SalarySys对象尚未创建，
+// 则创建相应的对象并返回指向这个对象的指针
+    SalarySys* pSalarySys1 = SalarySys::getInstance();
+
+    // …
+
+// 第二次调用getInstance()函数，这时SalarySys的对象已经创建，
+// 则不再创建新对象而直接返回指向那个已创建对象的指针，保证对象的唯一性
+    SalarySys* pSalarySys2 = SalarySys::getInstance();
+
+// … 
+
+// 释放已创建的对象, pSalarySys1和pSalarySys2指向的是同一个对象，
+// 使用pSalarySys1或pSalarySys2释放这个对象是等效的，并只需要释放一次
+    delete pSalarySys1;
+    pSalarySys1 = pSalarySys2 = nullptr;
+ 
+    return 0;
+}
