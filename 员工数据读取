@@ -1,0 +1,279 @@
+// 引入需要的头文件
+#include <iostream>  // 屏幕输入输出
+#include <fstream>   // 文件输入输出
+#include <climits>   // 引入INT_MAX
+
+// … 
+
+// 定义SalarySys中数组的最大数据量，
+// 也就是SalarySys最多能处理多少个员工数据
+const int MAX = 100000;
+
+// 工资管理类SalarySys
+class SalarySys
+{
+public:
+    // 构造函数，对属性进行初始化
+    SalarySys()
+        :m_nCount(0), // 设定当前数据量为0
+        m_strFileName("SalaryData.txt") // 设定员工数据文件名
+    {
+        // 对数组进行初始化，使得数组中都是nullptr
+         for(long i = 0; i < MAX; ++i)
+        {
+             m_arrEmp[i] = nullptr;
+        }
+
+        // 读取员工数据文件
+         Read();
+    }
+
+    // 析构函数，完成清理工作
+    ~SalarySys()
+    {
+        // 将员工数据写入文件，以备下次读取
+         Write();
+        // 释放数组中已经创建的员工对象
+         for(long i = 0; i < m_nCount; ++i)
+        {
+             delete m_arrEmp[i];  // 释放对象
+             m_arrEmp[i] = nullptr;   // 将指针设置为nullptr
+        }
+    }
+// SalarySys的公有行为
+public:
+    // 从员工数据文件读取已经输入的数据
+    int Read()
+    {
+        // 用于文件读取的中间临时变量
+         string strName = "";
+        int nLevel = 0;
+        int nYear = 0;
+
+        // 读取的数据个数
+         int i = 0;
+        // 打开数据文件
+         ifstream in(m_strFileName);
+        if(in.is_open()) // 判断是否成功打开
+        {
+             // 如果打开文件成功，构造无限循环进行读取
+             while(true)
+             {
+                 // 分别读取姓名、级别和入职年份
+                 in>>strName>>nLevel>>nYear;
+
+                 // 判断是否读取正确，如果读取错误，
+                 // 例如读取到达文件末尾，则结束读取
+                 if(!in)
+                     break; // 跳出读取循环
+
+                 // 根据读取的员工级别，分别创建不同的员工对象，
+                 // 并保存到m_arrEmp数组进行管理
+                 if( enumOfficer == nLevel)
+                 {
+                     // 根据员工姓名和入职年份，创建高级员工对象
+                     m_arrEmp[i] = new Officer(strName,nYear);
+                     ++i; // 记录已经读取的数据数量
+                 }
+                 else if ( enumStaff == nLevel)
+                 {
+                     m_arrEmp[i] = new Staff(strName,nYear);
+                     ++i; // 记录已经读取的数据数量
+                 }
+                
+                 // 如果读取的数量大于数组容量，则结束读取，否则继续下一次读取
+                 if(i >= MAX)                    
+                     break;
+             }
+             // 读取完毕，关闭文件
+             in.close();
+        }
+        // 输出读取结果并返回读取的数据个数
+         cout<<"已读取"<<i<<"个员工数据"<<endl;
+        m_nCount = i;  // 记录数组中有效数据的个数
+
+         return i;
+    }
+   
+    // 将员工数据写入文件
+    void Write()
+    {
+        // 打开数据文件作为输出
+         ofstream o(m_strFileName);
+        if(o.is_open())
+        {
+             // 如果成功打开文件，则利用for循环逐个输出数组中保存的数据
+             for(int i = 0;i < m_nCount; ++i)
+             {
+                 Employee* p = m_arrEmp[i];
+                 // 输出各个员工的各项属性，以Tab间隔
+                 o<<p->GetName()<<"\t"    // 名字
+                     <<p->GetLevel()<<"\t"    //级别
+                     <<p->GetYear()<<endl;    // 入职年份
+             }
+
+            // 输出完毕，关闭文件
+             o.close();
+        }
+    }  
+
+
+    // 手工输入员工数据
+    int Input()
+    {
+        // 提示输入
+        cout<<"请输入员工信息（名字 级别(1-一般员工,2-高级员工) 入职年份），例如：Wanggang 1 1982"<<endl;
+         cout<<"-1表示输入结束"<<endl;
+
+        // 新输入的数据保存在数组已有数据之后，
+         // 所以这里将已有数据个数m_nCount作为输入起点
+        // 又因为i在for循环之后还需要用到，所以定义在for循环之前
+
+         int i = m_nCount;
+        for(; i < MAX; ++i) // 初始化语句留空
+        {
+             // 利用for循环逐个输入
+             cout<<"请输入"<<i<<"号员工的信息："<<endl;
+             // 根据输入的数据创建具体的员工对象，并保存到数组
+             string strName = "";
+             int nL = 0;
+             int nY = 0;
+
+             // 获取用户输入
+             cin>>strName>>nL>>nY;
+
+             // 对输入情况进行判断处理
+             if(!cin) // 如果输入错误，则重新输入
+             {
+                 cout<<"输入错误，请重新输入"<<endl;
+                 cin.clear(); // 清理输入标志位
+                 cin.sync();  // 清空键盘缓冲区
+                 --i; // 本次输入作废，不计算在内
+                 continue; // 直接开始下一次输入循环
+             }
+             else // 输入正确
+             {
+                 // 检查是否输入结束
+                 if("-1" == strName)
+                 {
+                     break; // 结束输入循环
+                 }
+                 // 根据输入的数据，创建具体的员工对象并保存到数组
+                 if(enumOfficer == nL)
+                     m_arrEmp[i] = new Officer(strName,nY);
+                 else if(enumStaff == nL)
+                     m_arrEmp[i] = new Staff(strName,nY);
+                 else  // 员工级别输入错误
+                 {
+                     cout<<"错误的员工级别，请重新输入"<<endl;
+                      --i;
+                     cin.clear(); // 清理输入标志位
+                     cin.sync();  // 清空键盘缓冲区
+                      continue;
+                  }
+             }
+        }
+
+        // 输入完毕，调整当前数组中的数据量
+         m_nCount = i;
+
+        // 返回本次输入完成后的数据个数
+         return m_nCount;
+    }
+
+    // 获得最高工资的员工对象
+    Employee* GetMax()
+    {
+        // 表示结果的指针，初始值为nullptr
+         Employee* pMax = nullptr;
+        // 设定一个假想的当前最大值，也就是最小的int类型数据值
+         int nMax = INT_MIN;
+        // 用for循环遍历数组中的每一个对象
+         for(int i = 0;i < m_nCount; ++i)
+        {
+             // 如果当前对象的工资高于当前最大值nMax，则将当前对象的工资
+             // 作为新的当前最大值，并将当前对象的指针作为结果保存
+             // 这里使用的是基类Employeed 的指针调用GetSalry()虚函数来获得
+             // 当前对象的工资，而实际上，它将动态地调用这个指针所指向的实际对象的
+             // 相应函数来完成工资的计算。换言之，如果这个指针指向的是Officer对象，
+             // 就会调用Officer类的GetSalary()函数，如果指向的是Staff对象，
+             // 就会调用Staff类的GetSalary()函数。这样就实现了不同等级
+             // 的员工，不同的工资计算方式，使用统一的调用方式。
+             if(m_arrEmp[i]->GetSalary() > nMax)
+             {
+                 // 则将当前对象记录为结果对象
+                 pMax = m_arrEmp[i];
+                 // 并将当前对象的工资记录为当前最大值
+                 nMax = pMax->GetSalary();
+             }
+        }
+
+         // 返回指向拥有最高工资的员工对象的指针
+        return pMax;
+    }
+
+    // 查询员工工资
+    void Find()
+    {
+        // 构造无限循环进行查询
+         while(true)
+        {
+             // 查询的姓名
+             string strName = "";
+             // 输入提示
+             cout<<"请输入要查询的员工名字（-1表示结束查询）："<<endl;
+             // 获取用户输入的员工姓名
+             cin>>strName;
+
+             // 对用户输入进行检查
+             if(!cin) // 如果输入错误，提示重新输入
+             {
+                 cout<<"输入错误，请重新输入"<<endl;
+                 cin.clear();
+                 cin.sync();
+                 continue;  // 开始下一次查询
+             }
+             else if("-1" == strName) // 如果查询结束
+             {
+                 // 查询结束，用break结束查询循环
+                 cout<<"查询完毕，感谢使用！"<<endl;
+                 break;
+             }
+             // 记录是否找到查询的员工
+             bool bFind = false;
+             // 用for循环遍历所有员工对象，逐个进行比对查找
+             for(int i = 0;i < m_nCount;++i)
+             {
+                 // 获得指向当前对象的指针
+                 Employee* p = m_arrEmp[i];
+                 // 判断当前对象的名字是否与查询条件相同
+                 if(strName == p->GetName())
+                 {
+                     // 输出符合查询条件的员工信息
+                     cout<<"员工姓名："<<p->GetName()<<endl;
+                     cout<<"员工工资："<<p->GetSalary()<<endl;
+                     bFind = true; // 记录本次查询成功
+                     break;  // 跳出for循环结束查询     // 结束循环
+                 }
+             }
+
+             // 如果本次没有找到，则提示用户重新输入
+             if(!bFind)
+             {
+                 cout<<"无法找到名字为"<<strName<<"的员工。"<<endl;
+                  cout<<"请核对姓名，重新输入"<<endl;
+             }  
+        }
+    }
+
+// SlarySys类的属性
+// 因为这些属性都只是供SalarySys类访问，
+// 所以其访问级别设定为private
+private:
+    // 数据文件名，为了防止被错误修改，所以使用const关键字修饰
+    // 使用const修饰的成员变量，必须在类构造函数的初始化列表中进行初始化
+    // 在C++11中，也可以在定义时直接赋值初始化
+    const string m_strFileName;   
+    Employee* m_arrEmp[MAX];  // 保存员工对象指针的数组
+    int m_nCount; // 数组中已有的员工对象数
+};
