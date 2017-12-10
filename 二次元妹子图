@@ -1,0 +1,455 @@
+同了该回答
+死宅一枚。爬取5000张二次元妹子的图片，生成了下面这张图。
+
+
+赞超过10人就分享制作过程。
+
+
+
+2017年12月8日一更过程：
+
+
+
+使用 Scrapy 框架爬取5000张二次元图
+使用 opencv  批量格式化图片
+将图片按照RGB值的均方根排序，实现效果
+或者借助软件类似 Foto-Mosaik-Edda 实现相同效果
+
+
+一、安装环境
+
+
+
+安装 Scrapy 爬虫框架 
+
+
+pip install Scrapy
+
+
+windows 安装可以点击此处
+
+
+
+2. 推荐使用 wheel 来安装 opencv 点击此处
+
+
+
+3.安装 numpy 科学计算库
+
+
+
+pip install numpy
+
+
+4. 初始化一个 Scrapy 项目 acg
+
+
+
+scrapy startproject acg
+二、爬取图片
+
+
+
+以下代码主要实现操作：
+
+中间裁剪
+统一大小
+下载图片
+重复抓取
+
+
+/image.py
+
+import scrapy
+import urllib.request,urllib.parse
+import numpy as np
+import cv2
+
+class acgimages(scrapy.Spider):
+	"""docstring for acgimages"""
+	name = 'images'
+	start_urls = [
+		"http://m.52dmtp.com/tupiandaquan/index_2.html"
+	]
+	count = 1
+	page = 2
+	def parse(self,response):
+		def imageSave(item,path):
+			try:
+				maxsize = 512
+				res = urllib.request.urlopen(item).read()
+				image = np.asarray(bytearray(res),dtype="uint8")
+				image = cv2.imdecode(image,cv2.IMREAD_COLOR)
+				height,width = image.shape[:2]
+				if height > width:
+					scalefactor = (maxsize*1.0) / width
+					res = cv2.resize(image,(int(width * scalefactor),(int(height * scalefactor))),interpolation = cv2.INTER_CUBIC)
+					cutImage = res[0:maxsize,0:maxsize]
+				if width >= height:
+					scalefactor = (maxsize*1.0) / height
+					res = cv2.resize(image,(int(width * scalefactor), int(height*scalefactor)), interpolation = cv2.INTER_CUBIC)
+					center_x = int(round(width*scalefactor*0.5))
+					cutImage = res[0:maxsize,int(center_x - maxsize/2):int(center_x + maxsize/2)]
+				cv2.imwrite(path,cutImage)
+				print('image is save in ' + path)
+			except:
+				print('image save error')
+
+		image_url = response.xpath("//div[@class='grid-wrap']//img/@src").extract()
+		for item in image_url:
+			item = item.split('?')[0]
+			item = urllib.parse.quote(item,safe='/:?=.')
+			if 'jpg' in item:
+				self.count = self.count + 1
+				path = 'img/'+ str(self.count) + ".jpg"
+				imageSave(item,path)
+			if 'png' in item:
+				self.count = self.count + 1
+				path = 'img/'+ str(self.count) + ".png"
+				imageSave(item,path)
+		if self.page < 1180:
+			self.page = self.page + 1
+			next_url = "http://m.52dmtp.com/tupiandaquan/index_%d.html"%self.page
+			yield scrapy.Request(next_url,callback = self.parse)
+
+
+三、生成图片
+
+
+
+软件下载地址：Welcome | FMEdda | Foto-Mosaik-Edda
+
+
+
+1.创建一个图片数据库
+
+
+
+
+2.导入图片
+
+
+
+
+3.导入过程中
+
+
+
+
+4.创建一个马赛克风格图片
+
+
+
+
+5.打开原图
+
+
+
+
+6.选择已经上传的数据库
+
+
+
+
+7.生成完成
+
+
+
+
+简单高效的平民玩法到此结束。
+
+
+
+逼格不够？ 
+
+过50赞分享用 python 代码实现该软件的马赛克拼图效果。
+
+为什么这个人这么贪心，逃）
+
+
+
+2017年12月10日 本来今天开开心心。被迫更新
+
+
+
+一、安装依赖
+
+
+
+1.安装图像处理库 pillow
+
+
+
+pip install pillow
+
+
+
+
+二、使用 python 做到马赛克拼图效果
+
+
+
+写在前面，有人私信说 hsv（颜色空间）做效果会更好。大家可以尝试一下，这里的话只是对rgb的对比。主要效果差上面提到的程序一点，答主也在尽可能的优化代码，有更好的方法，欢迎私信评论。
+
+
+
+核心部分：求像素平均值，尝试过了方差和均方根，个人对整体优化并不明显。
+
+
+
+def get_avg_color(img):
+
+    width, height = img.size
+    pixels = img.load()
+    data = []
+    for x in range(width):
+        for y in range(height):
+            content = pixels[x, y]
+            data.append(content)
+    r = 0
+    g = 0
+    b = 0
+    count = 0
+
+    for x in range(len(data)):
+        r += data[x][0]
+        g += data[x][1]
+        b += data[x][2]
+        count += 1
+
+        rAvg = r / count
+        gAvg = g / count
+        bAvg = b / count
+        return (rAvg, gAvg, bAvg)
+
+
+核心部分：对比图片块颜色与马赛克块平均颜色差值。很重要的一步就是，求出近似值数组后，取一个随机数，有效的解决马赛克块重复问题（不是不重复使用，因为这样需要的图片集会很大）。
+
+
+
+def find_closiest(color, list_colors):
+    diff = 10000
+    cur_closer = []
+    arr_len = 0
+    for cur_color in list_colors:
+        n_diff = abs(color[0] - cur_color[0]) + abs(color[1] - cur_color[1])  + abs(color[2] -cur_color[2])
+        if n_diff < diff:
+            diff = n_diff
+            if len(cur_closer) <= 5:
+                cur_closer.append(cur_color)  
+            else:
+                cur_closer[arr_len] = cur_color    
+            arr_len += 1
+            if arr_len > 5:
+                arr_len = 0
+
+    index = random.randint(0,len(cur_closer) - 1)
+    return cur_closer[index]
+
+
+核心部分： 图片分割并且按图片集名字对比就近的图片
+
+
+
+def make_puzzle(img, color_list):
+    width, heigth = img.size
+    print("Width = {}, Height = {}".format(width,height))
+    background = Image.new('RGB', img.size, (255,255,255))
+    total_images = 0
+
+    for y1 in range(0, heigth, SLICE_SIZE):
+        for x1 in range(0, width, SLICE_SIZE):
+            y2 = y1 + SLICE_SIZE
+            x2 = x1 + SLICE_SIZE
+
+            new_img = img.crop((x1, y1, x2, y2))
+
+            color = get_avg_color(new_img)
+            close_img_name = find_closiest(color, color_list)
+            close_img_name = OUT_DIR + str(close_img_name) + '.jpg'
+            paste_img = Image.open(close_img_name)
+            total_images += 1
+            print("%s images \r" % total_images),
+            background.paste(paste_img, (x1, y1))
+    return background
+
+
+全部代码 /main.py
+
+import os
+from PIL import Image,ImageOps
+import argparse
+import time
+# 多进程，
+from multiprocessing import Pool
+import random
+import math
+# 少年，你不试试看hsv吗，据说效果更好
+from colorsys import rgb_to_hsv
+
+SLICE_SIZE = 60 # 马赛克大小
+OUT_SIZE = 5000 # 图片大小（注意：要做到清晰，必须要大）
+IN_DIR = "database/"
+OUT_DIR = "output/"
+
+def get_avg_color(img):
+
+    width, height = img.size
+    pixels = img.load()
+    data = []
+    for x in range(width):
+        for y in range(height):
+            content = pixels[x, y]
+            data.append(content)
+    r = 0
+    g = 0
+    b = 0
+    count = 0
+
+    for x in range(len(data)):
+        r += data[x][0]
+        g += data[x][1]
+        b += data[x][2]
+        count += 1
+
+        rAvg = r / count
+        gAvg = g / count
+        bAvg = b / count
+        return (rAvg, gAvg, bAvg)
+
+def find_closiest(color, list_colors):
+    diff = 10000
+    cur_closer = []
+    arr_len = 0
+    for cur_color in list_colors:
+        n_diff = abs(color[0] - cur_color[0]) + abs(color[1] - cur_color[1])  + abs(color[2] -cur_color[2])
+        if n_diff < diff:
+            diff = n_diff
+            if len(cur_closer) <= 5:
+                cur_closer.append(cur_color)  
+            else:
+                cur_closer[arr_len] = cur_color    
+            arr_len += 1
+            if arr_len > 5:
+                arr_len = 0
+    index = random.randint(0,len(cur_closer) - 1)
+
+    return cur_closer[index]
+
+def make_puzzle(img,color_list):
+    width, height = img.size
+    print("Width = {}, Height = {}".format(width,heigth))
+    background = Image.new('RGB', img.size, (255,255,255))
+    total_images = 0
+
+    for y1 in range(0, heigth, SLICE_SIZE):
+        for x1 in range(0, width, SLICE_SIZE):
+            y2 = y1 + SLICE_SIZE
+            x2 = x1 + SLICE_SIZE
+
+            new_img = img.crop((x1, y1, x2, y2))
+
+            color = get_avg_color(new_img)
+            close_img_name = find_closiest(color, color_list)
+            close_img_name = OUT_DIR + str(close_img_name) + '.jpg'
+            paste_img = Image.open(close_img_name)
+            total_images += 1
+            print("%s images \r" % total_images),
+            background.paste(paste_img, (x1, y1))
+    return background
+
+def get_image_paths():
+    paths = []
+    for file_ in os.listdir(IN_DIR):
+        paths.append(IN_DIR + file_)
+    print("一共找到了%s" % len(paths) + "张图片")    
+    return paths 
+
+def resize_pic(in_name,size):
+
+    img = Image.open(in_name)
+    img = ImageOps.fit(img, (size, size), Image.ANTIALIAS)
+    return img
+
+def convert_image(path):
+    img = resize_pic(path,SLICE_SIZE)
+    color = get_avg_color(img)
+    img.save(str(OUT_DIR) + str(color) + ".jpg")
+
+
+def convert_all_images():
+    paths = get_image_paths()
+    pool = Pool()
+    pool.map(convert_image, paths)
+    pool.close()
+    pool.join()   
+
+def read_img_db():
+    img_db = []
+    for file_ in os.listdir(OUT_DIR):
+        print(file_)
+        if file_ == 'None.jpg':
+            pass
+        else:     
+            file_ = file_.split('.jpg')[0]
+            file_ = tuple(map(float, file_[1:-1].split(',')))
+            img_db.append(file_)    
+    return img_db
+
+if __name__ == '__main__':
+
+    parse = argparse.ArgumentParser()
+
+    parse.add_argument("-i",'--input',required=True,help='input image')
+    parse.add_argument("-d", "--db", type=str, required=True,help="source database")
+    parse.add_argument("-o", "--output", type=str, required=True,help="out directory")
+
+    parse.add_argument("-is",'--inputSize',type=str, required=False,help="inputSize")
+    parse.add_argument("-os",'--outputSize',type=str, required=False,help="outputSize")
+
+    args = parse.parse_args()
+    start_time = time.time()
+    args = parse.parse_args()
+    image = args.input
+
+    if args.db:
+        IN_DIR = args.db
+    if args.output:
+        OUT_DIR= args.output
+    if args.inputSize:
+        SLICE_SIZE = args.inputSize
+    if args.outputSize:
+        OUT_SIZE = args.outputSize
+
+    img = resize_pic(image,OUT_SIZE)
+    convert_all_images()
+    list_of_imgs = read_img_db()
+
+    # 为了添加图片信息量，合并两张图片
+    out = make_puzzle(img, list_of_imgs)
+    img = Image.blend(out, img, 0.5)
+
+    img.save('out.jpg') 
+    print("耗时: %s" % (time.time() - start_time))
+    print("已完成")
+
+
+命令行输入
+
+
+
+python main.py -i test.jpg（你的图片） -d D:/acg/img/（你的图片集合） -o output/（你的马赛克图片输出位置）
+
+
+当然，你还可以给你的 background 滤色
+
+
+
+上传一张结果图（根据喜欢，精度可以更高），知乎限制5m了
+
+
+非洲小鸟，黑白对比度处理任然是败笔，建议还是 hsv
+
+
+
+后续将会发布优化版本。
